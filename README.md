@@ -1,2 +1,76 @@
-# Tally-Core2
-ATEM Mini Tally / Remote Control via a M5Stack Core2
+# Tally-Core2 ATEM Controller
+	This version of the code allows you to control an ATEM mini (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
+
+## Current Features (Version 2021-8)
+Current  status information displayed including network status, SSID, Core2 MAC/IP Addresses, ATEM IP Address
+- 	4 Camera control/status buttons
+- 	12 Marco control buttons via 3 simulated pages
+- 	Ability to read network config data from an SD card
+- 	Ability to write network config data in encrypted from into EEPROM so on a subsequent boot the SD card can be removed
+- 	Ability to validate EEPROM data to ensure its not corrupted or missing
+
+## Attribution
+
+This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
+
+- 	kasperskaarhoj / SKAARHOJ-Open-Engineering Arduino ATEM Libraries
+- 	bneedhamia / write_eeprom_strings and sdconfigfile libraries
+- 	arduino-libraries / Arduino_CRC32 library
+- 	josephpal / esp32-Encrypt library
+
+#### Based on the following:
+
+- M5Stack Core2 (Amazon or elsewhere)
+- Arduino IDE: http://docs.m5stack.com/#/en/arduino/arduino_core2_development (Version 1.8.13)
+- IDE Board: M5Stack-Core2 (Version 1.0.7)
+- IDE Library: M5Core2 (Version 0.0.2)
+
+## Libraries
+
+- https://github.com/kasperskaarhoj/SKAARHOJ-Open-Engineering
+- https://github.com/josephpal/esp32-Encrypt
+- https://github.com/bneedhamia/write_eeprom_strings
+- https://github.com/bneedhamia/sdconfigfile
+- https://github.com/arduino-libraries/Arduino_CRC32
+- https://github.com/josephpal/esp32-Encrypt
+## License:
+
+The MIT License (MIT)
+
+Copyright (c) 2021 Helo-Head
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## Requirements:
+
+1. DHCP must be enabled on the network for Core2 Client. This version does not currently support static IP address for the Core2 client.
+2. A static IP address must be assigned for the ATEM. This version does not support dynamic network connections. 
+3. An SD card with a .cfg file containing the network/configuration information. Note that if weeProm is enabled the software will write the required software configuration read from the SD card in encrypted form to the devices EEPROM and on the next boot if there is no SD card the EEPROM data will be used. 
+
+## Configuration File Format:
+**Note:** You cannot use a # in your definitions
+
+File format: field=value
+
+- weeProm - true/false, if true saves config data to EEPROM. EEPROM will automatically be used if no SD card inserted.
+- cfgVer - integer representing simple version control (**required**)
+- waitEnable - true/false, used for troubleshooting to slow the display down
+- waitMS - delay in milliseconds
+- M5id - Tally Client ID (**required**)
+- ssid - WiFi ID (**required**)
+- password - Wifi Password (**required**)
+- atemIp - IP address of ATEM switch (**required**)
+
+### 	 Example Configuration File
+	weeProm=true
+	cfgVer=1
+	waitEnable=true
+	waitMS=2000
+	M5id=ClientNodeName
+	ssid=WiFi-SSID
+	password=network_password
+	atemIp=192.168.10.240
