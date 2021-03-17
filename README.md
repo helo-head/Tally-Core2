@@ -11,8 +11,8 @@ Current  status information displayed including network status, SSID, Core2 MAC/
 
 ## Attribution
 
-This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
-
+This code is a fork of Aaron Parecki's (aaronpk/m5-core2-atem-controller) code and leverages the following GitHub libraries:
+-	aaronpk / m5-core2-atem-controller
 - 	kasperskaarhoj / SKAARHOJ-Open-Engineering Arduino ATEM Libraries
 - 	bneedhamia / write_eeprom_strings and sdconfigfile libraries
 - 	arduino-libraries / Arduino_CRC32 library
