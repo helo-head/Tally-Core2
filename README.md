@@ -1,18 +1,19 @@
-# Tally-Core2 ATEM Controller
+# Core2 ATEM Controller
 	This version of the code allows you to control an ATEM mini (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
 
-## Current Features (Version 2021-8)
+## Current Features (Version 2021-09)
 Current  status information displayed including network status, SSID, Core2 MAC/IP Addresses, ATEM IP Address
 - 	4 Camera control/status buttons
 - 	12 Marco control buttons via 3 simulated pages
 - 	Ability to read network config data from an SD card
 - 	Ability to write network config data in encrypted from into EEPROM so on a subsequent boot the SD card can be removed
 - 	Ability to validate EEPROM data to ensure its not corrupted or missing
+- 	==New== ability to use either client static ip or DHCP
 
 ## Attribution
 
-This code is a fork of Aaron Parecki's (aaronpk/m5-core2-atem-controller) code and leverages the following GitHub libraries:
--	aaronpk / m5-core2-atem-controller
+This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
+
 - 	kasperskaarhoj / SKAARHOJ-Open-Engineering Arduino ATEM Libraries
 - 	bneedhamia / write_eeprom_strings and sdconfigfile libraries
 - 	arduino-libraries / Arduino_CRC32 library
@@ -47,9 +48,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## Requirements:
 
-1. DHCP must be enabled on the network for Core2 Client. This version does not currently support static IP address for the Core2 client.
-2. A static IP address must be assigned for the ATEM. This version does not support dynamic network connections. 
-3. An SD card with a .cfg file containing the network/configuration information. Note that if weeProm is enabled the software will write the required software configuration read from the SD card in encrypted form to the devices EEPROM and on the next boot if there is no SD card the EEPROM data will be used. 
+1. A static IP address must be assigned for the ATEM. This version does not support dynamic network connections. 
+2. An SD card with a .cfg file containing the network/configuration information. Note that if weeProm is enabled the software will write the required software configuration read from the SD card in encrypted form to the devices EEPROM and on the next boot if there is no SD card the EEPROM data will be used. 
 
 ## Configuration File Format:
 **Note:** You cannot use a # in your definitions
@@ -64,8 +64,12 @@ File format: field=value
 - ssid - WiFi ID (**required**)
 - password - Wifi Password (**required**)
 - atemIp - IP address of ATEM switch (**required**)
+- tallyIp - IP of tally client (required for static config else optional)
+- subMask - Subnet mask (required for static config else optional)
+- gatewayIp - Gateway IP address (required for static config else optional)
+- dnsIp - DNS Server IP address (required for static config else optional)
 
-### 	 Example Configuration File
+### 	 Example DHCP Configuration File
 	weeProm=true
 	cfgVer=1
 	waitEnable=true
@@ -74,3 +78,17 @@ File format: field=value
 	ssid=WiFi-SSID
 	password=network_password
 	atemIp=192.168.10.240
+
+### 	 Example Static IP Configuration File
+	weeProm=true
+	cfgVer=1
+	waitEnable=true
+	waitMS=2000
+	M5id=ClientNodeName
+	ssid=WiFi-SSID
+	password=network_password
+	atemIp=192.168.10.240
+	tallyIp=192.168.10.199
+	subMask=255.255.255.0
+	gatewayIp=192.168.10.1
+	dnsIp=192.168.10.1

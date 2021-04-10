@@ -8,6 +8,7 @@
 //Version 6 includes reading the eeprom for config data
 //Version 7 added EEPROM config capability and CRC32 checking
 //Version 8 added EEPROM config encyption
+//Version 9 added static client ip address
 
 // Config File Reader header file from
 // https://github.com/arduino-libraries/Arduino_CRC32
@@ -42,7 +43,7 @@ const uint8_t CONFIG_LINE_LENGTH = 120; //Max config line lenght
 
 boolean readSDconfig(String configFile,int configFileLength);
 boolean readEEconfig(int configFileLength);
-char   *readEEPROMString(int baseAddress, int stringNumber);
+char*  readEEPROMString(int baseAddress, int line_length, int stringNumber);
 boolean addToEEPROM(int baseAddress, const char *text);
 boolean writeEEconfig();
 boolean didReadConfig;
@@ -62,6 +63,9 @@ int nextEEPROMaddress = START_ADDRESS;
 //define if eeprom is to be written to when SD card missing or config file missing
 boolean weeProm = false;
 
+//Used to define if client static ip data is to be used
+boolean staticConfig = false;
+
 // Configuration data 
 // Client ID and Network info and switch ip address defined in config file
 const char* cfgVer;
@@ -69,6 +73,10 @@ const char* M5id;
 const char* ssid;
 const char* password;
 const char* atemIp;
+const char* tallyIp;
+const char* subMask;
+const char* gatewayIp;
+const char* dnsIp;
 
 // Debug wait times defined in config file
 boolean waitEnable = false;
@@ -94,7 +102,6 @@ int macroOffset = 0;
 #define CAMERA_PROGRAM 2
 
 
-
 //Defined button sizes and locations
 #define BUTTON_SIZE 78
 #define BUTTON_SPACE 2
@@ -105,6 +112,8 @@ int buttonOneLocationX = BUTTON_SPACE;
 int buttonTwoLocationX = (BUTTON_SPACE * 2)+ BUTTON_SIZE;
 int buttonThreeLocationX = (BUTTON_SPACE * 3) + (BUTTON_SIZE * 2);
 int buttonFourLocationX = (BUTTON_SPACE * 4) + (BUTTON_SIZE * 3);
+;
+
 
 //Create ATEM object  
 ATEMstd AtemSwitcher;
@@ -261,7 +270,7 @@ snprintf(cipherKey, 17, CIPHER_PKEY "%04X%08X", chip, (uint32_t)chipid);
 //Set the key  
 cipher->setKey(cipherKey); 
 
-//Read config vaulues from EEPROM
+//Read stanard config vaulues from EEPROM
 cfgVer = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 0);
 M5id = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 1);
 ssid = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 2);
@@ -274,17 +283,45 @@ eeCRCEncrypted = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 5);
     return(false);
   } else {
 
+//Test to see if item 6 (subMask) exists, if so then static ip information was provided as well
+subMask = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 6);
+if (subMask != 0) {
+  staticConfig = true;
+  tallyIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 5);
+  gatewayIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 7);
+  dnsIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 8);
+  eeCRCEncrypted = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 9);
+   if (tallyIp == 0 || gatewayIp == 0 || dnsIp == 0 ) {
+    Serial.println(F("EEPROM incomplete static ip dataset."));
+    return(false);
+  }
+}
+
 
 // Defined String to hold decrypted data
 String decryptedString;
 
 //Defined new string arrays to hold decrypted data copied from decrypted String. This solves the decrypted String scope problem. 
-char * cfgVerDecrypted = new char[strlen(cfgVer)+1];
-char * M5idDecrypted = new char[strlen(M5id)+1];
-char * ssidDecrypted = new char[strlen(ssid)+1];
-char * passwordDecrypted = new char[strlen(password)+1];
-char * atemIpDecrypted = new char[strlen(atemIp)+1];
-char * eeCRCDecrypted = new char[strlen(eeCRCEncrypted)+1];
+char* cfgVerDecrypted = new char[strlen(cfgVer)+1];
+char* M5idDecrypted = new char[strlen(M5id)+1];
+char* ssidDecrypted = new char[strlen(ssid)+1];
+char* passwordDecrypted = new char[strlen(password)+1];
+char* atemIpDecrypted = new char[strlen(atemIp)+1];
+char* eeCRCDecrypted = new char[strlen(eeCRCEncrypted)+1];
+
+//Since we dont know at this point if static ip data was data was defined we will have to declare now and iniitalize during runtime. 
+char* tallyIpDecrypted;
+char* subMaskDecrypted;
+char* gatewayIpDecrypted;
+char* dnsIpDecrypted;
+
+//If static ip config data was detected during EEProm read go ahead and initialize the pointers to hold the decrypted data
+if (staticConfig){
+  tallyIpDecrypted = new char[strlen(tallyIp)+1];
+  subMaskDecrypted = new char[strlen(subMask)+1];
+  gatewayIpDecrypted = new char[strlen(gatewayIp)+1];
+  dnsIpDecrypted = new char[strlen(dnsIp)+1];
+}
 
 
 //Decrypt the config strings, then copy decrtypedString to string allocated memory then assign global pointer to  allocated memory
@@ -306,6 +343,22 @@ char * eeCRCDecrypted = new char[strlen(eeCRCEncrypted)+1];
     decryptedString = cipher->decryptString(String(eeCRCEncrypted));
     decryptedString.toCharArray(eeCRCDecrypted, strlen(eeCRCDecrypted));
     
+    //If static IP data was detected during EEProm read go ahead and decrypt the data
+    if(staticConfig){
+       decryptedString = cipher->decryptString(String(tallyIp));
+       decryptedString.toCharArray(tallyIpDecrypted, strlen(tallyIpDecrypted));
+       tallyIp = tallyIpDecrypted;
+       decryptedString = cipher->decryptString(String(subMask));
+       decryptedString.toCharArray(subMaskDecrypted, strlen(subMaskDecrypted));
+       subMask = subMaskDecrypted;
+       decryptedString = cipher->decryptString(String(gatewayIp));
+       decryptedString.toCharArray(gatewayIpDecrypted, strlen(gatewayIpDecrypted));
+       gatewayIp = gatewayIpDecrypted;
+       decryptedString = cipher->decryptString(String(dnsIp));
+       decryptedString.toCharArray(dnsIpDecrypted, strlen(dnsIpDecrypted));
+       dnsIp = dnsIpDecrypted;
+    }
+    
   //Convert CRC back to unsigned long after decryption 
     eeCRC = strtoul (eeCRCDecrypted, NULL,0);
 
@@ -318,6 +371,13 @@ char * eeCRCDecrypted = new char[strlen(eeCRCEncrypted)+1];
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)ssid, strlen(ssid));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)password, strlen(password));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)atemIp, strlen(atemIp));
+
+    if(staticConfig) {
+       crc32_results =  crc32_results + crc32.calc((uint8_t const *)tallyIp, strlen(tallyIp));
+       crc32_results =  crc32_results + crc32.calc((uint8_t const *)subMask, strlen(subMask));
+       crc32_results =  crc32_results + crc32.calc((uint8_t const *)gatewayIp, strlen(gatewayIp));
+       crc32_results =  crc32_results + crc32.calc((uint8_t const *)dnsIp, strlen(dnsIp));
+    }
 
  
     if (crc32_results != eeCRC) {
@@ -332,7 +392,7 @@ char * eeCRCDecrypted = new char[strlen(eeCRCEncrypted)+1];
 }
 
 //EEProm Reader
-char *readEEPROMString(int baseAddress, int maxLength, int stringNumber) {
+char* readEEPROMString(int baseAddress, int maxLength, int stringNumber) {
   int start;   // EEPROM address of the first byte of the string to return.
   int length;  // length (bytes) of the string to return, less the terminating null.
   char ch;
@@ -431,55 +491,99 @@ cipher->setKey(cipherKey);
   crc32_results =  crc32_results + crc32.calc((uint8_t const *)ssid, strlen(ssid));
   crc32_results =  crc32_results + crc32.calc((uint8_t const *)password, strlen(password));
   crc32_results =  crc32_results + crc32.calc((uint8_t const *)atemIp, strlen(atemIp));
+  if(staticConfig) {
+      crc32_results =  crc32_results + crc32.calc((uint8_t const *)tallyIp, strlen(tallyIp));
+      crc32_results =  crc32_results + crc32.calc((uint8_t const *)subMask, strlen(subMask));
+      crc32_results =  crc32_results + crc32.calc((uint8_t const *)gatewayIp, strlen(gatewayIp));
+      crc32_results =  crc32_results + crc32.calc((uint8_t const *)dnsIp, strlen(dnsIp));
+  }
   
 
 //convert crc restults to string to write to eeprom
 sprintf(cfgCRC, "%u", crc32_results);
 
 //Write to eprom
-    
+    //Add cfgVer
     workingData = cipher->encryptString(String(cfgVer));
     encryptedData = workingData.c_str();
     if (!addToEEPROM(START_ADDRESS, encryptedData)) {
       Serial.println(F("Write cfgVer failed.  Reset to try again."));
       return(false);
     }
+    //Add M5id
     workingData = cipher->encryptString(String(M5id));
     encryptedData = workingData.c_str();
     if (!addToEEPROM(START_ADDRESS, encryptedData)) {
       Serial.println(F("Write M5id failed.  Reset to try again."));
       return(false);
     }
+    //Add ssid
     workingData = cipher->encryptString(String(ssid));
     encryptedData = workingData.c_str();
     if (!addToEEPROM(START_ADDRESS, encryptedData)) {
       Serial.println(F("Write ssid failed.  Reset to try again."));
       return(false);
     }
+    //Add password
     workingData = cipher->encryptString(String(password));
     encryptedData = workingData.c_str();
     if (!addToEEPROM(START_ADDRESS, encryptedData)) {
       Serial.println(F("Write password failed.  Reset to try again."));
       return(false);
     }
+    //Add atemIp
     workingData = cipher->encryptString(String(atemIp));
     encryptedData = workingData.c_str();
     if (!addToEEPROM(START_ADDRESS, encryptedData)) {
       Serial.println(F("Write atemIp failed.  Reset to try again."));
       return(false);
     }
+    //If static config has been enabled write the static ip data to eeprom
+    if(staticConfig) {
+      //Add tallyIp
+      workingData = cipher->encryptString(String(tallyIp));
+      encryptedData = workingData.c_str();
+      if (!addToEEPROM(START_ADDRESS, encryptedData)) {
+        Serial.println(F("Write tallyIp failed.  Reset to try again."));
+        return(false);
+      }
+      //Add 
+      workingData = cipher->encryptString(String(subMask));
+      encryptedData = workingData.c_str();
+      if (!addToEEPROM(START_ADDRESS, encryptedData)) {
+        Serial.println(F("Write tallyIp failed.  Reset to try again."));
+        return(false);
+      }
+      //Add gatewayIp
+      workingData = cipher->encryptString(String(gatewayIp));
+      encryptedData = workingData.c_str();
+      if (!addToEEPROM(START_ADDRESS, encryptedData)) {
+        Serial.println(F("Write tallyIp failed.  Reset to try again."));
+        return(false);
+      }
+
+      //Add dnsIp
+      workingData = cipher->encryptString(String(dnsIp));
+      encryptedData = workingData.c_str();
+      if (!addToEEPROM(START_ADDRESS, encryptedData)) {
+        Serial.println(F("Write tallyIp failed.  Reset to try again."));
+        return(false);
+      }
+      
+    } //End staticConfig data
+    
+    //Add CRC Data
     workingData = cipher->encryptString(String(cfgCRC));
-    encryptedData = workingData.c_str();   
+    encryptedData = workingData.c_str();
     if (!addToEEPROM(START_ADDRESS, encryptedData)) {
       Serial.println(F("Write CRC failed.  Reset to try again."));
       return(false);
     }
+    //Add end of data mark
     if (!addToEEPROM(EEPROM_END_MARK, "EEPROM_END_MARK")) {
       Serial.println(F("Write EEPROM_END_MARK failed.  Reset to try again."));
       return(false);
     }
-
-
 
 return(true);
 
@@ -532,7 +636,8 @@ boolean readSDconfig(String configFile, int configLineLength) {
   const char * cfName = configFile.c_str();
 
   //Define keyCount count;
-  int keyCount = 0;
+  int keyCount = 0; //mimum keys required to work
+  int staticCount = 0; //required number of static parameters to work
 
   // Open the configuration file.
   if (!cfg.begin(cfName, configLineLength)) {
@@ -550,7 +655,8 @@ boolean readSDconfig(String configFile, int configLineLength) {
     
     } else if (cfg.nameIs("cfgVer")) {
       cfgVer = cfg.copyValue();
-      
+      keyCount++;
+            
     } else if (cfg.nameIs("waitEnable")) {
       waitEnable = cfg.getBooleanValue();
         
@@ -561,7 +667,8 @@ boolean readSDconfig(String configFile, int configLineLength) {
       // Tally ID (char *)
     } else if (cfg.nameIs("M5id")) {
       M5id = cfg.copyValue();
-    
+      keyCount++;
+      
       // ssid string (char *)
     } else if (cfg.nameIs("ssid")) {
       ssid = cfg.copyValue();
@@ -577,6 +684,22 @@ boolean readSDconfig(String configFile, int configLineLength) {
       atemIp = cfg.copyValue();
       keyCount++;
 
+    } else if (cfg.nameIs("tallyIp")) {
+      tallyIp = cfg.copyValue();
+      staticCount++;
+
+    } else if (cfg.nameIs("subMask")) {
+      subMask = cfg.copyValue();
+      staticCount++;
+
+    } else if (cfg.nameIs("gatewayIp")) {
+      gatewayIp = cfg.copyValue();
+      staticCount++;
+      
+    } else if (cfg.nameIs("dnsIp")) {
+      dnsIp = cfg.copyValue();
+      staticCount++;
+      
     } else {
       // report unrecognized names.
       Serial.print("Unknown key name in config: ");
@@ -587,8 +710,10 @@ boolean readSDconfig(String configFile, int configLineLength) {
   // clean up
   cfg.end();
 
- //Required key config values is three (3)
- if (keyCount < 3) return(false); else return(true);
+if (staticCount == 4) staticConfig = true; //Set client static config to true if all four parameters (tally ip, subnet mask, gateway and dns) are provided
+
+ //Required key config values is five as of version .8
+ if (keyCount < 5) return(false); else return(true);
  
 } // end readSDConfig
 
@@ -599,7 +724,9 @@ String ip2Str(IPAddress ip){
     s += i  ? "." + String(ip[i]) : String(ip[i]);
   }
   return s;
-} // end of ip2Str
+} // end of ip2St
+
+
 
 // Button press function
 void buttonWasPressed(TouchEvent& e) {
@@ -775,7 +902,7 @@ void setupButtons() {
   M5.Lcd.drawString("CAMERAS", 6, CAMERA_BUTTON_Y-20, 1);
   M5.Lcd.drawString("MACROS", 6, MACRO_BUTTON_Y-20, 1);
 
-  drawMacroButtons(macroOffset);
+  drawMacroButtons(0);
   
   drawCameraButton(1, CAMERA_OFF);
   drawCameraButton(2, CAMERA_OFF);
@@ -849,16 +976,29 @@ void setup() {
   }
 
 
- //Assign ATEM IP address. This is a poor mans way to avoid the issues with type conversion between uint and uint8_t.
-  sscanf(atemIp, "%u.%u.%u.%u", &tip[0], &tip[1], &tip[2], &tip[3]);
-  ip[0] = lowByte(tip[0]);
-  ip[1] = lowByte(tip[1]);
-  ip[2] = lowByte(tip[2]);
-  ip[3] = lowByte(tip[3]);
-  
+ //Assign ATEM IP address. 
+  IPAddress switchIp;
+  switchIp.fromString(atemIp);
 
-  IPAddress switchIp(ip);
+// If static IP data was provided attempt to use it
+  if (staticConfig) {
+    IPAddress tally;
+    IPAddress subnet;
+    IPAddress gateway;
+    IPAddress dns;
 
+    tally.fromString(tallyIp);
+    subnet.fromString(subMask);
+    gateway.fromString(gatewayIp);
+    dns.fromString(dnsIp);
+    
+    if (WiFi.config(tally, gateway, subnet, dns) == false) {
+      M5.Lcd.drawCentreString("Static Cfg Failed", (M5.Lcd.width()/2), (M5.Lcd.height()/3) - (M5.Lcd.fontHeight()/2), 1);
+      delay(3000);
+      HaltProgram();
+    }
+  }
+ 
   // Startup Wifi
   WiFi.begin(ssid, password);
   
@@ -893,6 +1033,7 @@ void setup() {
 
   //Call the button setup function
   setupButtons();
+
  
 } // end setup
 
@@ -909,7 +1050,7 @@ void loop() {
   static TouchButton m2 = TouchButton(buttonThreeLocationX, MACRO_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, "m2");
   static TouchButton m3 = TouchButton(buttonFourLocationX, MACRO_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, "m3");
 
-  //Check M5 button status and update if appropriate
+ //Check M5 button status and update if appropriate
   if (M5.BtnA.wasPressed()) {
     macroOffset = 0;
     drawMacroButtons(macroOffset);
@@ -936,6 +1077,7 @@ void loop() {
     M5.Lcd.drawCircle(158, 230, 7, TFT_WHITE); // button b
     M5.Lcd.fillCircle(264, 230, 7, TFT_WHITE); // button c
   }
+
 
   //Update the M5 subsystem
   M5.update(); 
