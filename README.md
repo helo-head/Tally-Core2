@@ -8,7 +8,7 @@
 - 	Ability to write network config data in encrypted form into EEPROM so on a subsequent boot the SD card can be removed
 - 	Ability to validate EEPROM data to ensure its not corrupted or missing
 - Ability to use either client static ip or DHCP
-- ==New== displays battery charge/discharge and current status
+- **New** displays battery charge/discharge and current status
 ## Attribution
 
 This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
