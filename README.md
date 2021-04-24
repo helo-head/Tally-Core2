@@ -1,15 +1,14 @@
-# Core2 ATEM Controller
+# Core2 ATEM Controller Version 1.0
 	This version of the code allows you to control an ATEM mini (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
 
-## Current Features (Version 2021-09)
-Current  status information displayed including network status, SSID, Core2 MAC/IP Addresses, ATEM IP Address
+## Current Features (Version 2021-10)
 - 	4 Camera control/status buttons
 - 	12 Marco control buttons via 3 simulated pages
 - 	Ability to read network config data from an SD card
-- 	Ability to write network config data in encrypted from into EEPROM so on a subsequent boot the SD card can be removed
+- 	Ability to write network config data in encrypted form into EEPROM so on a subsequent boot the SD card can be removed
 - 	Ability to validate EEPROM data to ensure its not corrupted or missing
-- 	==New== ability to use either client static ip or DHCP
-
+- Ability to use either client static ip or DHCP
+- **New** displays battery charge/discharge and current status
 ## Attribution
 
 This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
@@ -20,14 +19,12 @@ This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code 
 - 	josephpal / esp32-Encrypt library
 
 #### Based on the following:
-
 - M5Stack Core2 (Amazon or elsewhere)
 - Arduino IDE: http://docs.m5stack.com/#/en/arduino/arduino_core2_development (Version 1.8.13)
 - IDE Board: M5Stack-Core2 (Version 1.0.7)
 - IDE Library: M5Core2 (Version 0.0.2)
 
 ## Libraries
-
 - https://github.com/kasperskaarhoj/SKAARHOJ-Open-Engineering
 - https://github.com/josephpal/esp32-Encrypt
 - https://github.com/bneedhamia/write_eeprom_strings
@@ -35,7 +32,6 @@ This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code 
 - https://github.com/arduino-libraries/Arduino_CRC32
 - https://github.com/josephpal/esp32-Encrypt
 ## License:
-
 The MIT License (MIT)
 
 Copyright (c) 2021 Helo-Head
@@ -47,7 +43,6 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Requirements:
-
 1. A static IP address must be assigned for the ATEM. This version does not support dynamic network connections. 
 2. An SD card with a .cfg file containing the network/configuration information. Note that if weeProm is enabled the software will write the required software configuration read from the SD card in encrypted form to the devices EEPROM and on the next boot if there is no SD card the EEPROM data will be used. 
 
@@ -86,7 +81,7 @@ File format: field=value
 	waitMS=2000
 	M5id=ClientNodeName
 	ssid=WiFi-SSID
-	password=network_password
+	password=wifi_password
 	atemIp=192.168.10.240
 	tallyIp=192.168.10.199
 	subMask=255.255.255.0

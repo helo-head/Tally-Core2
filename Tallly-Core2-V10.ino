@@ -4,11 +4,11 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 
-
-//Version 6 includes reading the eeprom for config data
-//Version 7 added EEPROM config capability and CRC32 checking
-//Version 8 added EEPROM config encyption
-//Version 9 added static client ip address
+//Version .6 includes reading the eeprom for config data
+//Version .7 added EEPROM config capability and CRC32 checking
+//Version .8 added EEPROM config encyption
+//Version .9 added static client ip address and addressed heap corruption issue
+//Version 1.0 added Battery status
 
 // Config File Reader header file from
 // https://github.com/arduino-libraries/Arduino_CRC32
@@ -47,6 +47,18 @@ char*  readEEPROMString(int baseAddress, int line_length, int stringNumber);
 boolean addToEEPROM(int baseAddress, const char *text);
 boolean writeEEconfig();
 boolean didReadConfig;
+void updateBattery();
+
+//ATEM Connection and Battery Status Locations
+#define ACS_XLOC 312 // 312 Right Corner : 120 Second Column
+#define ACS_YLOC 7 // 7 First Row
+#define ACS_SIZE 7 // 7 Standard Size: 
+#define BS_VYLOC 110 // 110 Second Row : 0 First Row
+#define BS_VXLOC 210 // 210 Left of Battery : 170 Third Column
+#define BS_BYLOC 109 // 109 Second Row : 0 First Row
+#define BS_BXLOC 285 // 285 Far Right : 265 Forth Column
+
+#define _LOC 0 // 110 Standard
 
 // First address of EEPROM to write to.
 const int START_ADDRESS = 0;
@@ -132,6 +144,51 @@ void HaltProgram() {
  M5.shutdown();
 }
 
+//Update Battery Status Indication
+void updateBattery() {
+
+  static float batVoltage;
+  static float lastVoltage = 0;
+  static float batPercentage;
+  static int screenVoltage;
+  static uint16_t batColor; //Battery color indication
+  
+   //Determin Battery State
+  batVoltage = (round(M5.Axp.GetBatVoltage() * 10)/10); //Were not interested in the last digit thus round it down to 0. This helps limit amount of refeshes
+  
+  //Only refersh the battery indication if its changed  
+  if (lastVoltage != batVoltage){
+    lastVoltage = batVoltage;
+    
+    batPercentage = ( batVoltage <= 3.2 ) ? .1 : ( batVoltage - 3.2 );
+    batColor = batPercentage <= .20 ? TFT_RED : (batPercentage > .20 && batPercentage < .30) ? TFT_YELLOW : TFT_GREEN;
+
+    M5.Lcd.fillRect(BS_VXLOC,BS_VYLOC,60,17,TFT_BLACK);
+    
+    M5.Lcd.fillRect(BS_BXLOC,BS_BYLOC+5,7,7, TFT_LIGHTGREY); //Draw postive end of battery  
+    M5.Lcd.drawRect(BS_BXLOC+5,BS_BYLOC,30,17,TFT_LIGHTGREY); //Draw battery outline
+
+    M5.Lcd.fillRect(BS_BXLOC+6,BS_BYLOC+1,28,15,batColor); //Fill the box green
+    M5.Lcd.fillRect(BS_BXLOC+6,BS_BYLOC+1,int(28-(28*batPercentage)),15,TFT_BLACK); //Remove portion drained
+
+    if(M5.Axp.isACIN()) {
+    M5.Lcd.setTextColor(TFT_GREEN); // Set color to green
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.drawChar(BS_VXLOC,BS_VYLOC+1,'+',TFT_GREEN,TFT_BLACK,2); //Indicate charging
+    M5.Lcd.drawFloat(batVoltage,2,BS_VXLOC+40,BS_VYLOC,1); //Indicate voltage 
+    } else {
+    M5.Lcd.setTextColor(TFT_WHITE); // Set color to white
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.drawChar(BS_VXLOC,BS_VYLOC+1,'-',TFT_LIGHTGREY,TFT_BLACK,2); //Indicate discharging
+    M5.Lcd.drawFloat(batVoltage,2,BS_VXLOC+40,BS_VYLOC,1); //Indicate Voltage
+    }
+    
+    //Adjust screen voltage based on current battery level 2600 - 3300, nominal 3000
+    screenVoltage = (batColor == TFT_GREEN) ? 3300 : (batColor == TFT_YELLOW) ? 3000: 2700;
+    M5.Axp.SetLcdVoltage(screenVoltage);
+
+  }
+} //End updateBattery
 
 // Begining SD readFiles funtion
 int readFiles(File dir, String fileNames[], int sizeOfArray, String extension)
@@ -250,19 +307,32 @@ return(results[fileNumber]);
 boolean readEEconfig() {
 
 uint32_t crc32_results = 0; //Calculated CRC32
-uint32_t eeCRC; //CRC
+uint32_t eeCRC = 0; //CRC
 
-char * eeCRCEncrypted; //Encrypted EEPROM CRC
+char * eeCRCEncrypted = nullptr; //Encrypted EEPROM CRC
 
 //Create cipher object, key and working place holders
 Cipher * cipher = new Cipher();
 char cipherKey[17];
 
+// Defined String to hold decrypted data
 String decryptedString;
+
+//Defined new string arrays to hold decrypted data copied from decrypted String. This solves the decrypted String scope and heap corruption problems. 
+char * ssidDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * passwordDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * atemIpDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * cfgVerDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * M5idDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * eeCRCDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * tallyIpDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * subMaskDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * gatewayIpDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
+char * dnsIpDecrypted = new char[EEPROM_MAX_STRING_LENGTH+1];
 
 //Generate second part of key based on 12 byte mac address
 uint64_t chipid = ESP.getEfuseMac(); // The chip ID is essentially its MAC address(length: 6 bytes).
-uint16_t chip = (uint16_t)(chipid >> 32);
+uint16_t chip = (uint16_t)(chipid >> 32); //Shift right 16 bits and then then cast to 16 bits
 
 //Generate fully key based on pre-key + hardware mac address
 snprintf(cipherKey, 17, CIPHER_PKEY "%04X%08X", chip, (uint32_t)chipid); 
@@ -278,44 +348,29 @@ password = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 3);
 atemIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 4);
 eeCRCEncrypted = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 5);
 
- if (cfgVer == 0 || M5id == 0 || ssid == 0 || password == 0 || atemIp == 0 ) {
+//Test results, should not have returned a nullptr
+ if (!cfgVer || !M5id || !ssid || !password|| !atemIp || !eeCRCEncrypted) {
     Serial.println(F("EEPROM has not yet been initialized or incomplete dataset."));
     return(false);
   } else {
-
+  
 //Test to see if item 6 (subMask) exists, if so then static ip information was provided as well
 subMask = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 6);
-if (subMask != 0) {
+
+if (subMask) {
   staticConfig = true;
   tallyIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 5);
+  //Dont need line 6 as already read
   gatewayIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 7);
   dnsIp = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 8);
   eeCRCEncrypted = readEEPROMString(START_ADDRESS,CONFIG_LINE_LENGTH, 9);
-   if (tallyIp == 0 || gatewayIp == 0 || dnsIp == 0 ) {
+   if (!tallyIp || !gatewayIp || !dnsIp ) {
     Serial.println(F("EEPROM incomplete static ip dataset."));
     return(false);
   }
 }
 
-
-// Defined String to hold decrypted data
-String decryptedString;
-
-//Defined new string arrays to hold decrypted data copied from decrypted String. This solves the decrypted String scope problem. 
-char* cfgVerDecrypted = new char[strlen(cfgVer)+1];
-char* M5idDecrypted = new char[strlen(M5id)+1];
-char* ssidDecrypted = new char[strlen(ssid)+1];
-char* passwordDecrypted = new char[strlen(password)+1];
-char* atemIpDecrypted = new char[strlen(atemIp)+1];
-char* eeCRCDecrypted = new char[strlen(eeCRCEncrypted)+1];
-
-//Since we dont know at this point if static ip data was data was defined we will have to declare now and iniitalize during runtime. 
-char* tallyIpDecrypted;
-char* subMaskDecrypted;
-char* gatewayIpDecrypted;
-char* dnsIpDecrypted;
-
-//If static ip config data was detected during EEProm read go ahead and initialize the pointers to hold the decrypted data
+//If static ip config data was detected during EEProm read go ahead and allocaxte the memory to hold the decrypted data. Decrypted data should always be shorter them encrypted data.
 if (staticConfig){
   tallyIpDecrypted = new char[strlen(tallyIp)+1];
   subMaskDecrypted = new char[strlen(subMask)+1];
@@ -323,50 +378,49 @@ if (staticConfig){
   dnsIpDecrypted = new char[strlen(dnsIp)+1];
 }
 
-
 //Decrypt the config strings, then copy decrtypedString to string allocated memory then assign global pointer to  allocated memory
     decryptedString = cipher->decryptString(String(cfgVer));
-    decryptedString.toCharArray(cfgVerDecrypted, strlen(cfgVerDecrypted));
+    decryptedString.toCharArray(cfgVerDecrypted, EEPROM_MAX_STRING_LENGTH+1); //done this way to avoid issues with  VLA
     cfgVer = cfgVerDecrypted;
     decryptedString = cipher->decryptString(String(M5id));
-    decryptedString.toCharArray(M5idDecrypted, strlen(M5idDecrypted));
+    decryptedString.toCharArray(M5idDecrypted, EEPROM_MAX_STRING_LENGTH+1);
     M5id = M5idDecrypted;
     decryptedString = cipher->decryptString(String(ssid));
-    decryptedString.toCharArray(ssidDecrypted, strlen(ssidDecrypted));
+    decryptedString.toCharArray(ssidDecrypted, EEPROM_MAX_STRING_LENGTH+1);
     ssid = ssidDecrypted;
     decryptedString = cipher->decryptString(String(password));
-    decryptedString.toCharArray(passwordDecrypted, strlen(passwordDecrypted));
+    decryptedString.toCharArray(passwordDecrypted, EEPROM_MAX_STRING_LENGTH+1);
     password = passwordDecrypted;
     decryptedString = cipher->decryptString(String(atemIp));
-    decryptedString.toCharArray(atemIpDecrypted, strlen(atemIpDecrypted));
+    decryptedString.toCharArray(atemIpDecrypted, EEPROM_MAX_STRING_LENGTH+1);
     atemIp = atemIpDecrypted;
     decryptedString = cipher->decryptString(String(eeCRCEncrypted));
-    decryptedString.toCharArray(eeCRCDecrypted, strlen(eeCRCDecrypted));
-    
+    decryptedString.toCharArray(eeCRCDecrypted, EEPROM_MAX_STRING_LENGTH+1);
+   
     //If static IP data was detected during EEProm read go ahead and decrypt the data
     if(staticConfig){
        decryptedString = cipher->decryptString(String(tallyIp));
-       decryptedString.toCharArray(tallyIpDecrypted, strlen(tallyIpDecrypted));
+       decryptedString.toCharArray(tallyIpDecrypted, EEPROM_MAX_STRING_LENGTH+1);
        tallyIp = tallyIpDecrypted;
        decryptedString = cipher->decryptString(String(subMask));
-       decryptedString.toCharArray(subMaskDecrypted, strlen(subMaskDecrypted));
+       decryptedString.toCharArray(subMaskDecrypted, EEPROM_MAX_STRING_LENGTH+1);
        subMask = subMaskDecrypted;
        decryptedString = cipher->decryptString(String(gatewayIp));
-       decryptedString.toCharArray(gatewayIpDecrypted, strlen(gatewayIpDecrypted));
+       decryptedString.toCharArray(gatewayIpDecrypted, EEPROM_MAX_STRING_LENGTH+1);
        gatewayIp = gatewayIpDecrypted;
        decryptedString = cipher->decryptString(String(dnsIp));
-       decryptedString.toCharArray(dnsIpDecrypted, strlen(dnsIpDecrypted));
+       decryptedString.toCharArray(dnsIpDecrypted, EEPROM_MAX_STRING_LENGTH+1);
        dnsIp = dnsIpDecrypted;
     }
     
   //Convert CRC back to unsigned long after decryption 
     eeCRC = strtoul (eeCRCDecrypted, NULL,0);
-
+    
     
  //Caldulate CRC values. 
  // Unlike Zlib's crc32_combine this simply adds the values together to provide a reasonable assurance
  // the values were not corruped while writing the EEPROM.  
-    crc32_results =  crc32.calc((uint8_t const *)cfgVer, 1); // strlen(cfgVer));
+    crc32_results =  crc32.calc((uint8_t const *)cfgVer, strlen(cfgVer)); // strlen(cfgVer));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)M5id, strlen(M5id));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)ssid, strlen(ssid));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)password, strlen(password));
@@ -379,6 +433,7 @@ if (staticConfig){
        crc32_results =  crc32_results + crc32.calc((uint8_t const *)dnsIp, strlen(dnsIp));
     }
 
+ Serial.printf("<%s> <%s> <%s> <%s> <%s>\n", cfgVer, M5id, ssid, password, atemIp);
  
     if (crc32_results != eeCRC) {
     Serial.print(crc32_results);
@@ -394,7 +449,7 @@ if (staticConfig){
 //EEProm Reader
 char* readEEPROMString(int baseAddress, int maxLength, int stringNumber) {
   int start;   // EEPROM address of the first byte of the string to return.
-  int length;  // length (bytes) of the string to return, less the terminating null.
+  int blength;  // length (bytes) of the string to return, less the terminating null.
   char ch;
   int nextAddress;  // next address to read from EEPROM.
   char *result;     // points to the dynamically-allocated result to return.
@@ -413,13 +468,13 @@ char* readEEPROMString(int baseAddress, int maxLength, int stringNumber) {
 #if defined(ESP8266) || defined(ESP32)
       EEPROM.end();
 #endif
-      return (char *) 0;  // not enough strings are in EEPROM.
+      return (nullptr);  // Return nullptr if not enough strings are in EEPROM.
     }
 
     // Read through the string's terminating null (0).
-    int length = 0;
-    while (ch != '\0' && length < maxLength - 1) {
-      ++length;
+    int blength = 0;
+    while (ch != '\0' && blength < maxLength - 1) {
+      ++blength;
       ch = EEPROM.read(nextAddress++);
     }
   }
@@ -433,25 +488,25 @@ char* readEEPROMString(int baseAddress, int maxLength, int stringNumber) {
 #if defined(ESP8266) || defined(ESP32)
     EEPROM.end();
 #endif
-    return (char *) 0;  // not enough strings are in EEPROM.
+    return (nullptr);  // Return nullptr if not enough strings are in EEPROM.
   }
 
   // Count to the end of this string.
-  length = 0;
-  while (ch != '\0' && length < maxLength - 1) {
-    ++length;
+  blength = 0;
+  while (ch != '\0' && blength < maxLength - 1) {
+    ++blength;
     ch = EEPROM.read(nextAddress++);
   }
 
   // Allocate space for the string, then copy it.
-  result = new char[length + 1];
+  result = new char[blength + 1];
   nextAddress = start;
-  for (i = 0; i < length; ++i) {
+  for (i = 0; i < blength; ++i) {
     result[i] = (char) EEPROM.read(nextAddress++);
   }
   result[i] = '\0';
 
-  return result;
+  return(result);
 
 } // End EEProm Reader
 
@@ -462,7 +517,7 @@ boolean writeEEconfig() {
 */
 uint32_t crc32_results = 0;
 
-const char * encryptedData;
+const char * encryptedData = nullptr;
 String workingData;
 
 //Used to convert crc2_reults to string to be written to EEPROM
@@ -561,7 +616,6 @@ sprintf(cfgCRC, "%u", crc32_results);
         Serial.println(F("Write tallyIp failed.  Reset to try again."));
         return(false);
       }
-
       //Add dnsIp
       workingData = cipher->encryptString(String(dnsIp));
       encryptedData = workingData.c_str();
@@ -1022,9 +1076,10 @@ void setup() {
 
         
   // If a debugging wait was enabled and defined use it
-    if (waitEnable) {
+    if (waitEnable && waitMS > 0) {
+        Serial.printf("Wait enabled for %d\n",waitMS);
         delay(waitMS);
-    } 
+    } else { Serial.printf("Wait not enabled and waitMS is: %d\n",waitMS); }
 
   //Start the ATEM switch and try connect
   AtemSwitcher.begin(switchIp);
@@ -1039,6 +1094,10 @@ void setup() {
 
 
 void loop() {
+
+    //ATEM Connection Status
+  static boolean atemConStatus = false;
+  static boolean atemLastConStatus = false;
   
   static TouchButton c1 = TouchButton(buttonOneLocationX, CAMERA_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, "c1");
   static TouchButton c2 = TouchButton(buttonTwoLocationX, CAMERA_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, "c2");
@@ -1085,13 +1144,21 @@ void loop() {
   //Run the ATEM loop
   AtemSwitcher.runLoop(); 
 
-  //Determin ATEM connection status
-  if (AtemSwitcher.isConnected() == true) {
-    M5.Lcd.fillCircle(312,7, 7, TFT_GREEN); //ATEM connected
-  }else {
-    M5.Lcd.fillCircle(312,7, 7, TFT_RED); //ATEM not connected
-  }
+  //Determin ATEM connection status. Done this way to reduce screen updates.
+  atemConStatus = AtemSwitcher.isConnected();
+  if (atemConStatus != atemLastConStatus) {
+    atemLastConStatus = atemConStatus;
+ 
+  if (atemConStatus) {
+    M5.Lcd.fillCircle(ACS_XLOC,ACS_YLOC, ACS_SIZE, TFT_GREEN); //ATEM connected
+  } else {
+    M5.Lcd.fillCircle(ACS_XLOC,ACS_YLOC, ACS_SIZE, TFT_RED); //ATEM not connected
+   }
+  } //End connection status loop
 
+  //Update battery status if it has changed
+  updateBattery();
+  
   //Determin Tally State
   for(int i=1; i<=4; i++) {
     int currentTallyState = AtemSwitcher.getProgramTally(i) ? CAMERA_PROGRAM : (AtemSwitcher.getPreviewTally(i) ? CAMERA_PREVIEW : CAMERA_OFF);
