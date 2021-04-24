@@ -47,6 +47,18 @@ char*  readEEPROMString(int baseAddress, int line_length, int stringNumber);
 boolean addToEEPROM(int baseAddress, const char *text);
 boolean writeEEconfig();
 boolean didReadConfig;
+void updateBattery();
+
+//ATEM Connection and Battery Status Locations
+#define ACS_XLOC 312 // 312 Right Corner : 120 Second Column
+#define ACS_YLOC 7 // 7 First Row
+#define ACS_SIZE 7 // 7 Standard Size: 
+#define BS_VYLOC 110 // 110 Second Row : 0 First Row
+#define BS_VXLOC 210 // 210 Left of Battery : 170 Third Column
+#define BS_BYLOC 109 // 109 Second Row : 0 First Row
+#define BS_BXLOC 285 // 285 Far Right : 265 Forth Column
+
+#define _LOC 0 // 110 Standard
 
 // First address of EEPROM to write to.
 const int START_ADDRESS = 0;
@@ -151,24 +163,24 @@ void updateBattery() {
     batPercentage = ( batVoltage <= 3.2 ) ? .1 : ( batVoltage - 3.2 );
     batColor = batPercentage <= .20 ? TFT_RED : (batPercentage > .20 && batPercentage < .30) ? TFT_YELLOW : TFT_GREEN;
 
-    M5.Lcd.fillRect(230,110,60,17,TFT_BLACK);
+    M5.Lcd.fillRect(BS_VXLOC,BS_VYLOC,60,17,TFT_BLACK);
     
-    M5.Lcd.fillRect(285,115,7,7, TFT_LIGHTGREY); //Draw postive end of battery  
-    M5.Lcd.drawRect(290,110,30,17,TFT_LIGHTGREY); //Draw battery outline
+    M5.Lcd.fillRect(BS_BXLOC,BS_BYLOC+5,7,7, TFT_LIGHTGREY); //Draw postive end of battery  
+    M5.Lcd.drawRect(BS_BXLOC+5,BS_BYLOC,30,17,TFT_LIGHTGREY); //Draw battery outline
 
-    M5.Lcd.fillRect(291,111,28,15,batColor); //Fill the box green
-    M5.Lcd.fillRect(291,111,int(28-(28*batPercentage)),15,TFT_BLACK); //Remove portion drained
+    M5.Lcd.fillRect(BS_BXLOC+6,BS_BYLOC+1,28,15,batColor); //Fill the box green
+    M5.Lcd.fillRect(BS_BXLOC+6,BS_BYLOC+1,int(28-(28*batPercentage)),15,TFT_BLACK); //Remove portion drained
 
     if(M5.Axp.isACIN()) {
     M5.Lcd.setTextColor(TFT_GREEN); // Set color to green
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.drawChar(230,111,'+',TFT_GREEN,TFT_BLACK,2); //Indicate charging
-    M5.Lcd.drawFloat(batVoltage,2,260,110,2);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.drawChar(BS_VXLOC,BS_VYLOC+1,'+',TFT_GREEN,TFT_BLACK,2); //Indicate charging
+    M5.Lcd.drawFloat(batVoltage,2,BS_VXLOC+40,BS_VYLOC,1); //Indicate voltage 
     } else {
     M5.Lcd.setTextColor(TFT_WHITE); // Set color to white
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.drawChar(230,111,'-',TFT_LIGHTGREY,TFT_BLACK,2); //Indicate discharging
-    M5.Lcd.drawFloat(batVoltage,2,260,110,2);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.drawChar(BS_VXLOC,BS_VYLOC+1,'-',TFT_LIGHTGREY,TFT_BLACK,2); //Indicate discharging
+    M5.Lcd.drawFloat(batVoltage,2,BS_VXLOC+40,BS_VYLOC,1); //Indicate Voltage
     }
     
     //Adjust screen voltage based on current battery level 2600 - 3300, nominal 3000
@@ -408,7 +420,7 @@ if (staticConfig){
  //Caldulate CRC values. 
  // Unlike Zlib's crc32_combine this simply adds the values together to provide a reasonable assurance
  // the values were not corruped while writing the EEPROM.  
-    crc32_results =  crc32.calc((uint8_t const *)cfgVer, 1); // strlen(cfgVer));
+    crc32_results =  crc32.calc((uint8_t const *)cfgVer, strlen(cfgVer)); // strlen(cfgVer));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)M5id, strlen(M5id));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)ssid, strlen(ssid));
     crc32_results =  crc32_results + crc32.calc((uint8_t const *)password, strlen(password));
@@ -421,6 +433,7 @@ if (staticConfig){
        crc32_results =  crc32_results + crc32.calc((uint8_t const *)dnsIp, strlen(dnsIp));
     }
 
+ Serial.printf("<%s> <%s> <%s> <%s> <%s>\n", cfgVer, M5id, ssid, password, atemIp);
  
     if (crc32_results != eeCRC) {
     Serial.print(crc32_results);
@@ -603,7 +616,6 @@ sprintf(cfgCRC, "%u", crc32_results);
         Serial.println(F("Write tallyIp failed.  Reset to try again."));
         return(false);
       }
-
       //Add dnsIp
       workingData = cipher->encryptString(String(dnsIp));
       encryptedData = workingData.c_str();
@@ -1138,9 +1150,9 @@ void loop() {
     atemLastConStatus = atemConStatus;
  
   if (atemConStatus) {
-    M5.Lcd.fillCircle(312,7, 7, TFT_GREEN); //ATEM connected
+    M5.Lcd.fillCircle(ACS_XLOC,ACS_YLOC, ACS_SIZE, TFT_GREEN); //ATEM connected
   } else {
-    M5.Lcd.fillCircle(312,7, 7, TFT_RED); //ATEM not connected
+    M5.Lcd.fillCircle(ACS_XLOC,ACS_YLOC, ACS_SIZE, TFT_RED); //ATEM not connected
    }
   } //End connection status loop
 
