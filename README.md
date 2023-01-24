@@ -30,7 +30,7 @@ This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code 
 - https://github.com/bneedhamia/write_eeprom_strings
 - https://github.com/bneedhamia/sdconfigfile
 - https://github.com/arduino-libraries/Arduino_CRC32
-- https://github.com/josephpal/esp32-Encrypt
+
 ## License:
 The MIT License (MIT)
 
