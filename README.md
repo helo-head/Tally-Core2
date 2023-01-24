@@ -3,7 +3,7 @@
 
 ## Current Features (Version 2021-10)
 - 	4 Camera control/status buttons
-- 	12 Marco control buttons via 3 simulated pages
+- 	12 Macro control buttons via 3 simulated pages
 - 	Ability to read network config data from an SD card
 - 	Ability to write network config data in encrypted form into EEPROM so on a subsequent boot the SD card can be removed
 - 	Ability to validate EEPROM data to ensure its not corrupted or missing
