@@ -1,14 +1,15 @@
-# Core2 ATEM Controller Version 1.0
-	This version of the code allows you to control an ATEM mini (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
+# Core2 ATEM Controller Version 1.1
+	This version of the code allows you to control an ATEM mini or Pro (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
 
-## Current Features (Version 2021-10)
+## Current Features (Version 1.1)
 - 	4 Camera control/status buttons
-- 	12 Macro control buttons via 3 simulated pages
+- 	12 Marco control buttons via 3 simulated pages
 - 	Ability to read network config data from an SD card
 - 	Ability to write network config data in encrypted form into EEPROM so on a subsequent boot the SD card can be removed
 - 	Ability to validate EEPROM data to ensure its not corrupted or missing
 - Ability to use either client static ip or DHCP
-- **New** displays battery charge/discharge and current status
+- Displays battery charge/discharge
+- Displays current connection status
 ## Attribution
 
 This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
@@ -17,12 +18,13 @@ This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code 
 - 	bneedhamia / write_eeprom_strings and sdconfigfile libraries
 - 	arduino-libraries / Arduino_CRC32 library
 - 	josephpal / esp32-Encrypt library
+- 	BrianTeeman / Testing and Debugging
 
 #### Based on the following:
 - M5Stack Core2 (Amazon or elsewhere)
-- Arduino IDE: http://docs.m5stack.com/#/en/arduino/arduino_core2_development (Version 1.8.13)
-- IDE Board: M5Stack-Core2 (Version 1.0.7)
-- IDE Library: M5Core2 (Version 0.0.2)
+- Arduino IDE: http://docs.m5stack.com/#/en/arduino/arduino_core2_development (Version 1.8.19)
+- IDE Board: M5Stack-Core2 (Version 2.0.6)
+- IDE Library: M5Core2 (Version 0.1.5)
 
 ## Libraries
 - https://github.com/kasperskaarhoj/SKAARHOJ-Open-Engineering
@@ -34,7 +36,7 @@ This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code 
 ## License:
 The MIT License (MIT)
 
-Copyright (c) 2021 Helo-Head
+Copyright (c) 2023 Helo-Head
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -86,4 +88,4 @@ File format: field=value
 	tallyIp=192.168.10.199
 	subMask=255.255.255.0
 	gatewayIp=192.168.10.1
-	dnsIp=192.168.10.1
+	dnsIp=192.168.10.1	
