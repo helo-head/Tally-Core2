@@ -844,8 +844,6 @@ void updateMacroButton(int buttonNumber, int macroOffset, bool isPressed) {
 
   M5.Lcd.setTextColor(isPressed  ? BLACK : WHITE);
   int buttonColor = (isPressed ? WHITE : TFT_DARKGREY);
-  
-  TFT_DARKGREY);
 
   buttonNumber = buttonNumber + macroOffset;
 
