@@ -1,5 +1,5 @@
 # Core2 ATEM Controller Version 1.1
-	This version of the code allows you to control an ATEM mini or Pro (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
+This version of the code allows you to control an ATEM mini or Pro (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
 
 ## Current Features (Version 1.1)
 - 	4 Camera control/status buttons
@@ -10,15 +10,15 @@
 - Ability to use either client static ip or DHCP
 - Displays battery charge/discharge
 - Displays current connection status
-## Attribution
 
+## Attribution
 This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
 
 - 	kasperskaarhoj / SKAARHOJ-Open-Engineering Arduino ATEM Libraries
 - 	bneedhamia / write_eeprom_strings and sdconfigfile libraries
 - 	arduino-libraries / Arduino_CRC32 library
 - 	josephpal / esp32-Encrypt library
-- 	BrianTeeman / Testing and Debugging
+- 	[@BrianTeeman](https://github.com/brianteeman) / Testing and Debugging
 
 #### Based on the following:
 - M5Stack Core2 (Amazon or elsewhere)
@@ -32,7 +32,7 @@ This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code 
 - https://github.com/bneedhamia/write_eeprom_strings
 - https://github.com/bneedhamia/sdconfigfile
 - https://github.com/arduino-libraries/Arduino_CRC32
-- https://github.com/josephpal/esp32-Encrypt
+
 ## License:
 The MIT License (MIT)
 
@@ -66,7 +66,7 @@ File format: field=value
 - gatewayIp - Gateway IP address (required for static config else optional)
 - dnsIp - DNS Server IP address (required for static config else optional)
 
-### 	 Example DHCP Configuration File
+### 	Example DHCP Configuration File
 	weeProm=true
 	cfgVer=1
 	waitEnable=true
@@ -76,7 +76,7 @@ File format: field=value
 	password=network_password
 	atemIp=192.168.10.240
 
-### 	 Example Static IP Configuration File
+### 	Example Static IP Configuration File
 	weeProm=true
 	cfgVer=1
 	waitEnable=true
