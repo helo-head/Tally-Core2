@@ -767,7 +767,7 @@ String ip2Str(IPAddress ip) {
   return s;
 }  // End of ip2St
 
-/// Button press function
+// Button press function
 void buttonWasPressed(Event &e) {
   Button &tbtn = *e.button;
   const char *buttonName = e.objName();
