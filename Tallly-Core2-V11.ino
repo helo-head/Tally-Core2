@@ -786,7 +786,7 @@ void buttonWasPressed(Event &e) {
       updateMacroButton(buttonNumber, macroOffset, tbtn.isPressed());
       AtemSwitcher.setMacroAction(buttonNumber + macroOffset, 0);
     }
-  } else {                            // Release handler for macros to update button appropriatly
+  } else {                            // Release handler for macros to update button appropriately
     if (buttonType == 'm') {
       updateMacroButton(buttonNumber, macroOffset, tbtn.isPressed());
     }
