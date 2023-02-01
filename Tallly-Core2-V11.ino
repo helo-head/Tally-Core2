@@ -774,7 +774,7 @@ void buttonWasPressed(Event &e) {
   char buttonType = buttonName[0];
   int buttonNumber = buttonName[1] - '0';
 
-  if (!postConfig) {                  //Update file selection button appropriatly
+  if (!postConfig) {                  // Update file selection button appropriately
     fileNumber = buttonName[1] - 48;  // Hack to convert ascii char to long
     M5.Lcd.fillRect(tbtn.x, tbtn.y, tbtn.w, tbtn.h, tbtn.isPressed() ? WHITE : BLACK);
 
