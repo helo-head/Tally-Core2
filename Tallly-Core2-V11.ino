@@ -779,7 +779,7 @@ void buttonWasPressed(Event &e) {
     M5.Lcd.fillRect(tbtn.x, tbtn.y, tbtn.w, tbtn.h, tbtn.isPressed() ? WHITE : BLACK);
 
   } else {
-  if ( e.type == E_TOUCH) {           // If a touch event set ATEM appropriatly and update the button if a maco
+  if ( e.type == E_TOUCH) {           // If a touch event set ATEM appropriately and update the button if a macro
     if (buttonType == 'c') {
       AtemSwitcher.changeProgramInput(buttonNumber);
     } else {
