@@ -774,19 +774,26 @@ void buttonWasPressed(Event &e) {
   char buttonType = buttonName[0];
   int buttonNumber = buttonName[1] - '0';
 
-  if (!postConfig) {
+  if (!postConfig) {                  // Update file selection button appropriately
     fileNumber = buttonName[1] - 48;  // Hack to convert ascii char to long
     M5.Lcd.fillRect(tbtn.x, tbtn.y, tbtn.w, tbtn.h, tbtn.isPressed() ? WHITE : BLACK);
 
   } else {
-
+  if ( e.type == E_TOUCH) {           // If a touch event set ATEM appropriately and update the button if a macro
     if (buttonType == 'c') {
       AtemSwitcher.changeProgramInput(buttonNumber);
     } else {
-      updateMacroButton(buttonNumber, macroOffset, tbtn.isPressed(), false);
+      updateMacroButton(buttonNumber, macroOffset, tbtn.isPressed());
       AtemSwitcher.setMacroAction(buttonNumber + macroOffset, 0);
     }
+  } else {                            // Release handler for macros to update button appropriately
+    if (buttonType == 'm') {
+      updateMacroButton(buttonNumber, macroOffset, tbtn.isPressed());
+    }
   }
+    
+  } // End camera/macro button handling
+  
 }  // End buttonWasPressed
 
 // Draw camera buttons
@@ -831,18 +838,19 @@ void drawCameraButton(int buttonNumber, int state) {
 }  // End drawCameraButton
 
 // Update Macro button function
-void updateMacroButton(int buttonNumber, int macroOffset, bool isPressed, bool isRunning) {
+void updateMacroButton(int buttonNumber, int macroOffset, bool isPressed) {
   int font = 1;
   M5.Lcd.setTextSize(6);
 
-  M5.Lcd.setTextColor(isPressed || isRunning ? BLACK : WHITE);
-  int buttonColor = isPressed ? WHITE : (isRunning ? TFT_RED : TFT_DARKGREY);
+  M5.Lcd.setTextColor(isPressed  ? BLACK : WHITE);
+  int buttonColor = (isPressed ? WHITE : TFT_DARKGREY);
 
   buttonNumber = buttonNumber + macroOffset;
 
   switch (buttonNumber) {
     case 0:
       M5.Lcd.fillRoundRect(buttonOneLocationX, MACRO_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, 6, buttonColor);
+      
       M5.Lcd.drawCentreString("0", 2 + buttonOneLocationX + (BUTTON_SIZE / 2), MACRO_BUTTON_Y + 18, font);
       break;
     case 1:
@@ -968,7 +976,7 @@ void setup() {
 
   Serial.begin(115200);
   // Define the touch handler
-  M5.Buttons.addHandler(buttonWasPressed, E_TAP + E_TOUCH + E_RELEASE);
+  M5.Buttons.addHandler(buttonWasPressed, E_TOUCH + E_RELEASE);
 
   // Setup the SD card
   if (!SD.begin()) {
