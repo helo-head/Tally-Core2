@@ -792,7 +792,7 @@ void buttonWasPressed(Event &e) {
     }
   }
     
-  } //End camera/macro button handling
+  } // End camera/macro button handling
   
 }  // End buttonWasPressed
 
