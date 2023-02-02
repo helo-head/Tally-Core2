@@ -1176,7 +1176,7 @@ void loop() {
     M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);    // If ATEM not connected then "On Air" is unknown at best
     atemOAStatus = false;
     atemLastOAStatus = false;
-    }  // End "Aon Air" status check
+    }  // End "On Air" status check
 
   // Update battery status if it has changed
   updateBattery();
