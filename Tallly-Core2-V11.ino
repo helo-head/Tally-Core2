@@ -58,7 +58,7 @@ void updateBattery();
 #define BS_BYLOC 0    // 109 Second Row : 0 First Row
 #define BS_BXLOC 265  // 285 Far Right : 265 Forth Column
 #define OAS_XLOC 135  // Right of center second row
-#define OAS_YLOC 0    // First Row
+#define OAS_YLOC 7    // First Row
 #define OAS_SIZE 6    // Standard Size
 
 #define _LOC 0  // 110 Standard
