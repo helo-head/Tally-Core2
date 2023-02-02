@@ -50,7 +50,7 @@ boolean didReadConfig;
 void updateBattery();
 
 // ATEM Connection, On Air and Battery Status Locations
-#define ACS_XLOC 120  // 312 Right Corner : 120 Second Column
+#define ACS_XLOC 105  // 312 Right Corner : 120 Second Column
 #define ACS_YLOC 7    // 7 First Row
 #define ACS_SIZE 6    // 7 Standard Size:
 #define BS_VYLOC 0    // 110 Second Row : 0 First Row
