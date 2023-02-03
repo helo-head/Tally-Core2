@@ -1170,7 +1170,7 @@ void loop() {
     atemOAStatus = AtemSwitcher.getStreamStreaming();
     if (atemOAStatus != atemLastOAStatus) {
       atemLastOAStatus = atemOAStatus;
-      M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, atemOAStatus ? TFT_RED : TFT_LIGHTGREY);  // ATEM "On Air" Status
+      M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, atemOAStatus ? TFT_RED : TFT_LIGHTGREY);  // ATEM "On Air" Status
     }
   } else {
     M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);    // If ATEM not connected then "On Air" is unknown at best
