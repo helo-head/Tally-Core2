@@ -1,5 +1,5 @@
 # Core2 ATEM Controller Version 1.2
-This version of the code allows you to control an ATEM Mini Pro (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
+This version of the code allows you to control an ATEM Mini (up to 4 cameras and 12 macros) via a M5Stack Core2 ESP32 device. 
 
 ## Current Features (Version 1.2)
 - 	4 Camera control/status buttons
@@ -10,7 +10,7 @@ This version of the code allows you to control an ATEM Mini Pro (up to 4 cameras
 - Ability to use either client static ip or DHCP
 - Displays battery charge/discharge
 - Displays current connection status
-- Displays "On Air" status
+- Displays "On Air" status (requires ATEM Mini Pro or greater)
 
 ## Attribution
 This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:

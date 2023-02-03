@@ -49,19 +49,25 @@ boolean writeEEconfig();
 boolean didReadConfig;
 void updateBattery();
 
-// ATEM Connection, On Air and Battery Status Locations
-#define ACS_XLOC 105  // 312 Right Corner : 120 Second Column
+#define OAS_SUPP true   // Device supports "On Air" streaming functionality - true for ATEM Mini Pro or greater else false
+#define OAS_XLOC 135    // Right of center second row
+#define OAS_YLOC 7      // First Row
+#define OAS_SIZE 6      // Standard Size
+
+
+// ATEM Connection and Battery Status Locations
+#if OAS_SUPP == true
+  #define ACS_XLOC 105  // Ensures room for On Air status
+#else 
+  #define ACS_XLOC 120  // Center in second column
+#endif
+
 #define ACS_YLOC 7    // 7 First Row
 #define ACS_SIZE 6    // 7 Standard Size:
 #define BS_VYLOC 0    // 110 Second Row : 0 First Row
 #define BS_VXLOC 170  // 210 Left of Battery : 170 Third Column
 #define BS_BYLOC 0    // 109 Second Row : 0 First Row
 #define BS_BXLOC 265  // 285 Far Right : 265 Forth Column
-#define OAS_XLOC 135  // Right of center second row
-#define OAS_YLOC 7    // First Row
-#define OAS_SIZE 6    // Standard Size
-
-#define _LOC 0  // 110 Standard
 
 // First address of EEPROM to write to.
 const int START_ADDRESS = 0;
@@ -1090,9 +1096,11 @@ void setup() {
 
   // Show the default state of ATEM as not connected via gray dot
   M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_LIGHTGREY);
-  
-  // Show the default state of "On Air" as not streaming via gray dot
-  M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);
+
+  #if OAS_SUPP == true
+    // Show the default state of "On Air" as not streaming via gray dot
+    M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);
+  #endif
 
   // Show the iniital state of the battery
   updateBattery();
@@ -1164,7 +1172,7 @@ void loop() {
     }
   }  // End connection status
   
-  
+#if OAS_SUPP == true
   // Update ATEM "On Air" status
   if (atemConStatus) {
     atemOAStatus = AtemSwitcher.getStreamStreaming();
@@ -1177,6 +1185,7 @@ void loop() {
     atemOAStatus = false;
     atemLastOAStatus = false;
     }  // End "On Air" status check
+#endif
 
   // Update battery status if it has changed
   updateBattery();
