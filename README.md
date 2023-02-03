@@ -10,7 +10,7 @@ This version of the code allows you to control an ATEM Mini (up to 4 cameras and
 - Ability to use either client static ip or DHCP
 - Displays battery charge/discharge
 - Displays current connection status
-- Displays "On Air" status (requires ATEM Mini Pro or greater)
+- Displays "On Air" status (see requirements section)
 
 ## Attribution
 This code is a fork of Aaron Parecki's (aaronpk/am5-core2-atem-controller) code and leverages the following GitHub libraries:
@@ -47,7 +47,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Requirements:
-- An ATEM Mini Pro or greater for "On Air" functionality
+- An ATEM Mini Pro or greater is required for "On Air" functionality. To enable, ensure OAS_SUPP is defined as true in the code.
 - A static IP address must be assigned for the ATEM. This version does not support dynamic network connections. 
 - An SD card with a .cfg file containing the network/configuration information. Note that if weeProm is enabled the software will write the required software configuration read from the SD card in encrypted form to the devices EEPROM and on the next boot if there is no SD card the EEPROM data will be used. 
 
