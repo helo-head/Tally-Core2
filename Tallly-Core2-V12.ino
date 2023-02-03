@@ -10,6 +10,7 @@
  * Version .9 added static client ip address and addressed heap corruption issue
  * Version 1.0 added Battery status
  * Version 1.1 Updated to support new Touch library (Version .003+) & new SD & FS libraries (Version: 2.0.0).
+ * Version 1.2 Added Stream status (On Air) indicator 
  */
 
 // Config File Reader header file from
@@ -48,16 +49,25 @@ boolean writeEEconfig();
 boolean didReadConfig;
 void updateBattery();
 
+#define OAS_SUPP true   // Device supports "On Air" streaming functionality - true for ATEM Mini Pro or greater else false
+#define OAS_XLOC 135    // Right of center second row
+#define OAS_YLOC 7      // First Row
+#define OAS_SIZE 6      // Standard Size
+
+
 // ATEM Connection and Battery Status Locations
-#define ACS_XLOC 120  // 312 Right Corner : 120 Second Column
+#if OAS_SUPP == true
+  #define ACS_XLOC 105  // Ensures room for On Air status
+#else 
+  #define ACS_XLOC 120  // Center in second column
+#endif
+
 #define ACS_YLOC 7    // 7 First Row
 #define ACS_SIZE 6    // 7 Standard Size:
 #define BS_VYLOC 0    // 110 Second Row : 0 First Row
 #define BS_VXLOC 170  // 210 Left of Battery : 170 Third Column
 #define BS_BYLOC 0    // 109 Second Row : 0 First Row
 #define BS_BXLOC 265  // 285 Far Right : 265 Forth Column
-
-#define _LOC 0  // 110 Standard
 
 // First address of EEPROM to write to.
 const int START_ADDRESS = 0;
@@ -1087,6 +1097,11 @@ void setup() {
   // Show the default state of ATEM as not connected via gray dot
   M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_LIGHTGREY);
 
+  #if OAS_SUPP == true
+    // Show the default state of "On Air" as not streaming via gray dot
+    M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);
+  #endif
+
   // Show the iniital state of the battery
   updateBattery();
 }  // End setup
@@ -1096,6 +1111,10 @@ void loop() {
   // ATEM Connection Status
   static boolean atemConStatus = false;
   static boolean atemLastConStatus = false;
+  
+  // ATEM On Air Status
+  static boolean atemOAStatus = false;
+  static boolean atemLastOAStatus = false;
 
   static Button c1(buttonOneLocationX, CAMERA_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, false, "c1");
   static Button c2(buttonTwoLocationX, CAMERA_BUTTON_Y, BUTTON_SIZE, BUTTON_SIZE, false, "c2");
@@ -1151,7 +1170,22 @@ void loop() {
     } else {
       M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_RED);  // ATEM not connected
     }
-  }  // End connection status loop
+  }  // End connection status
+  
+#if OAS_SUPP == true
+  // Update ATEM "On Air" status
+  if (atemConStatus) {
+    atemOAStatus = AtemSwitcher.getStreamStreaming();
+    if (atemOAStatus != atemLastOAStatus) {
+      atemLastOAStatus = atemOAStatus;
+      M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, atemOAStatus ? TFT_RED : TFT_LIGHTGREY);  // ATEM "On Air" Status
+    }
+  } else {
+    M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);    // If ATEM not connected then "On Air" is unknown at best
+    atemOAStatus = false;
+    atemLastOAStatus = false;
+    }  // End "On Air" status check
+#endif
 
   // Update battery status if it has changed
   updateBattery();
