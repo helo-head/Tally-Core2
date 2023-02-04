@@ -364,7 +364,7 @@ boolean readEEconfig() {
     return (false);
   } else {
 
-    //Test to see if any data exists at line 10. If so that means both static ip data exists as well as the oas option
+    // Test to see if any data exists at line 10. If so that means both static ip data exists as well as the oas option
     dataExists = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 10);
 
     if (dataExists) {
