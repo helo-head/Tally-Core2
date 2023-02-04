@@ -87,7 +87,7 @@ boolean staticConfig = false;
 // Used to define if configuration options data is to be used
 boolean optionsConfig = false;
 
-//Used to define if oas was enabled in configuration
+// Used to define if oas was enabled in configuration
 boolean oasEnabled = false;
 
 // Configuration data
