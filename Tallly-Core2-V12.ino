@@ -759,7 +759,7 @@ boolean readSDconfig(String configFile, int configLineLength) {
   // Define keyCount count;
   int keyCount = 0;     // Minimum keys required to work
   int staticCount = 0;  // Required number of static parameters to work
-  int optionsCount = 0;  // Required number of optional parameterrs
+  int optionsCount = 0;  // Required number of optional parameters
 
   // Open the configuration file.
   if (!cfg.begin(cfName, configLineLength)) {
