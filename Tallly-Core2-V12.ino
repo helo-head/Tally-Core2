@@ -425,7 +425,7 @@ boolean readEEconfig() {
       dnsIpDecrypted = new char[strlen(dnsIp) + 1];
     }
 
-    // if options data was detected during EEPro read go ahead and allocation the memory to hid the decrypted data. 
+    // If options data was detected during EEProm read go ahead and allocate the memory to hide the decrypted data. 
     if (optionsConfig) {
       oasDecrypted = new char[strlen(oas) + 1];
     }
