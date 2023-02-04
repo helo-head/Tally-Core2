@@ -401,7 +401,7 @@ boolean readEEconfig() {
           return (false);
         }
       } else {
-        //Test to see if any data exists at line 6. If so that means just options data exists 
+        // Test to see if any data exists at line 6. If so that means just options data exists 
         dataExists = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 6);
 
         if (dataExists) {
