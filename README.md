@@ -47,7 +47,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Requirements:
-- An ATEM Mini Pro or greater is required for "On Air" functionality. To enable, ensure oas is defined as true in the configuration file.
+- An ATEM Mini Pro or greater is required for "On Air" functionality. To enable, ensure oas=true is added to your configuration file.
 - A static IP address must be assigned for the ATEM. This version does not support dynamic network connections. 
 - An SD card with a .cfg file containing the network/configuration information. Note that if weeProm is enabled the software will write the required software configuration read from the SD card in encrypted form to the devices EEPROM and on the next boot if there is no SD card the EEPROM data will be used. 
 
@@ -68,7 +68,7 @@ File format: field=value
 - subMask - Subnet mask (required for static config else optional)
 - gatewayIp - Gateway IP address (required for static config else optional)
 - dnsIp - DNS Server IP address (required for static config else optional)
-- #oas=true (Optional, however required for “On Air” status to be displayed on ATEM Mini Pro or greater)
+- oas=true (Optional, however required for “On Air” status to be displayed on ATEM Mini Pro or greater)
 
 ### 	Example DHCP Configuration File with OAS enabled
 	weeProm=true
