@@ -386,7 +386,7 @@ boolean readEEconfig() {
       }
     } else {
     
-      //Test to see if any data exists at line 9. If so that means just static ip data exists 
+      // Test to see if any data exists at line 9. If so that means just static ip data exists 
       dataExists = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 9);
 
       if (dataExists) {
