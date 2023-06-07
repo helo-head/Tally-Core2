@@ -49,25 +49,22 @@ boolean writeEEconfig();
 boolean didReadConfig;
 void updateBattery();
 
-#define OAS_SUPP true   // Device supports "On Air" streaming functionality - true for ATEM Mini Pro or greater else false
+
+//On Air Status (OAS) locations
 #define OAS_XLOC 135    // Right of center second row
 #define OAS_YLOC 7      // First Row
 #define OAS_SIZE 6      // Standard Size
 
 
 // ATEM Connection and Battery Status Locations
-#if OAS_SUPP == true
-  #define ACS_XLOC 105  // Ensures room for On Air status
-#else 
-  #define ACS_XLOC 120  // Center in second column
-#endif
-
-#define ACS_YLOC 7    // 7 First Row
-#define ACS_SIZE 6    // 7 Standard Size:
-#define BS_VYLOC 0    // 110 Second Row : 0 First Row
-#define BS_VXLOC 170  // 210 Left of Battery : 170 Third Column
-#define BS_BYLOC 0    // 109 Second Row : 0 First Row
-#define BS_BXLOC 265  // 285 Far Right : 265 Forth Column
+#define ACS_XLOC 120      // Center in second column
+#define ACS_XLOC_OAS 105  // Left of center when OAS is enabled
+#define ACS_YLOC 7        // 7 First Row
+#define ACS_SIZE 6        // 7 Standard Size:
+#define BS_VYLOC 0        // 110 Second Row : 0 First Row
+#define BS_VXLOC 170      // 210 Left of Battery : 170 Third Column
+#define BS_BYLOC 0        // 109 Second Row : 0 First Row
+#define BS_BXLOC 265      // 285 Far Right : 265 Forth Column
 
 // First address of EEPROM to write to.
 const int START_ADDRESS = 0;
@@ -87,7 +84,14 @@ boolean weeProm = false;
 // Used to define if client static ip data is to be used
 boolean staticConfig = false;
 
+// Used to define if configuration options data is to be used
+boolean optionsConfig = false;
+
+// Used to define if oas was enabled in configuration
+boolean oasEnabled = false;
+
 // Configuration data
+
 // Client ID and Network info and switch ip address defined in config file
 const char *cfgVer;
 const char *M5id;
@@ -103,11 +107,14 @@ const char *dnsIp;
 boolean waitEnable = false;
 int waitMS = 0;
 
+// Options defined in config file, currently only oas is supported
+const char *oas;
+
 // Place holder for ip conversion
 uint8_t ip[4];
 unsigned int tip[4];
 
-// Defined current running macro and tallyStates array
+// Define current running macro and tallyStates array
 int currentRunningMacro = -1;
 int tallyStates[4];
 
@@ -133,7 +140,7 @@ int buttonOneLocationX = BUTTON_SPACE;
 int buttonTwoLocationX = (BUTTON_SPACE * 2) + BUTTON_SIZE;
 int buttonThreeLocationX = (BUTTON_SPACE * 3) + (BUTTON_SIZE * 2);
 int buttonFourLocationX = (BUTTON_SPACE * 4) + (BUTTON_SIZE * 3);
-;
+
 
 // Create ATEM object
 ATEMstd AtemSwitcher;
@@ -159,10 +166,10 @@ void updateBattery() {
   static float lastVoltage = 0;
   static float batPercentage;
   static int screenVoltage;
-  static uint16_t batColor;  // Battery color indication
+  static uint16_t batColor;
 
   // Determine Battery State
-  batVoltage = (round(M5.Axp.GetBatVoltage() * 10) / 10);  // We're not interested in the last digit thus round it down to 0. This helps limit amount of refreshes
+  batVoltage = (round(M5.Axp.GetBatVoltage() * 10) / 10);  // We're not interested in the last digit thus round it down to 0. This helps limit the amount of refreshes
 
   // Only refresh the battery indication if it's changed
   if (lastVoltage != batVoltage) {
@@ -312,6 +319,7 @@ boolean readEEconfig() {
   uint32_t eeCRC = 0;          // CRC
 
   char *eeCRCEncrypted = nullptr;  // Encrypted EEPROM CRC
+  char *dataExists = nullptr;      // Used to probe for EE CRC data
 
   // Create cipher object, key and working place holders
   Cipher *cipher = new Cipher();
@@ -331,12 +339,13 @@ boolean readEEconfig() {
   char *subMaskDecrypted = new char[EEPROM_MAX_STRING_LENGTH + 1];
   char *gatewayIpDecrypted = new char[EEPROM_MAX_STRING_LENGTH + 1];
   char *dnsIpDecrypted = new char[EEPROM_MAX_STRING_LENGTH + 1];
+  char *oasDecrypted = new char[EEPROM_MAX_STRING_LENGTH + 1];
 
   // Generate second part of key based on 12 byte mac address
   uint64_t chipid = ESP.getEfuseMac();       // The chip ID is essentially its MAC address(length: 6 bytes).
   uint16_t chip = (uint16_t)(chipid >> 32);  // Shift right 16 bits and then then cast to 16 bits
 
-  // Generate fully key based on pre-key + hardware mac address
+  // Generate full key based on pre-key + hardware mac address
   snprintf(cipherKey, 17, CIPHER_PKEY "%04X%08X", chip, (uint32_t)chipid);
 
   // Set the key
@@ -356,21 +365,57 @@ boolean readEEconfig() {
     return (false);
   } else {
 
-    // Test to see if item 6 (subMask) exists, if so then static ip information was provided as well
-    subMask = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 6);
+    // Test to see if any data exists at line 10. If so that means both static ip data exists as well as the oas option
+    dataExists = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 10);
 
-    if (subMask) {
+    if (dataExists) {
+      optionsConfig = true;
       staticConfig = true;
       tallyIp = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 5);
-      // Don't need line 6 as already read
+      subMask = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 6);
       gatewayIp = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 7);
       dnsIp = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 8);
-      eeCRCEncrypted = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 9);
+      oas = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 9);
+      eeCRCEncrypted = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 10);
       if (!tallyIp || !gatewayIp || !dnsIp) {
         Serial.println(F("EEPROM incomplete static ip dataset."));
         return (false);
       }
+      if (!oas) {
+        Serial.println(F("EEPROM incomplete options dataset."));
+        return (false);
+      }
+    } else {
+      // Test to see if any data exists at line 9. If so that means just static ip data exists 
+      dataExists = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 9);
+
+      if (dataExists) {
+        staticConfig = true;
+        tallyIp = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 5);
+        subMask = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 6);
+        gatewayIp = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 7);
+        dnsIp = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 8);
+        eeCRCEncrypted = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 9);
+        if (!tallyIp || !gatewayIp || !dnsIp) {
+          Serial.println(F("EEPROM incomplete static ip dataset."));
+          return (false);
+        }
+      } else {
+        // Test to see if any data exists at line 6. If so that means that just options data exists 
+        dataExists = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 6);
+
+        if (dataExists) {
+          optionsConfig = true;
+          oas = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 5);
+          eeCRCEncrypted = readEEPROMString(START_ADDRESS, CONFIG_LINE_LENGTH, 6);
+          if (!oas) {
+            Serial.println(F("EEPROM incomplete options dataset."));
+            return (false);
+          }
+        }
+      }
     }
+  }   
 
     // If static ip config data was detected during EEProm read go ahead and allocate the memory to hold the decrypted data. Decrypted data should always be shorter than encrypted data.
     if (staticConfig) {
@@ -380,7 +425,12 @@ boolean readEEconfig() {
       dnsIpDecrypted = new char[strlen(dnsIp) + 1];
     }
 
-    // Decrypt the config strings, then copy decrtypedString to string allocated memory then assign global pointer to allocated memory
+    // If options data was detected during EEProm read go ahead and allocate the memory to hold the decrypted data. 
+    if (optionsConfig) {
+      oasDecrypted = new char[strlen(oas) + 1];
+    }
+
+    // Decrypt the config strings, then copy decrtypedString to allocated memory then assign global pointer to allocated memory
     decryptedString = cipher->decryptString(String(cfgVer));
     decryptedString.toCharArray(cfgVerDecrypted, EEPROM_MAX_STRING_LENGTH + 1);  // Done this way to avoid issues with VLA
     cfgVer = cfgVerDecrypted;
@@ -415,6 +465,12 @@ boolean readEEconfig() {
       dnsIp = dnsIpDecrypted;
     }
 
+    // If options data was detected during EEProm read go ahead and decrypt the data
+    if (optionsConfig) {
+      decryptedString = cipher->decryptString(String(oas));
+      decryptedString.toCharArray(oasDecrypted, EEPROM_MAX_STRING_LENGTH + 1);
+      oas = oasDecrypted;
+
     // Convert CRC back to unsigned long after decryption
     eeCRC = strtoul(eeCRCDecrypted, NULL, 0);
 
@@ -434,7 +490,9 @@ boolean readEEconfig() {
       crc32_results = crc32_results + crc32.calc((uint8_t const *)dnsIp, strlen(dnsIp));
     }
 
-    Serial.printf("<%s> <%s> <%s> <%s> <%s>\n", cfgVer, M5id, ssid, password, atemIp);
+    if (optionsConfig) {
+      crc32_results = crc32_results + crc32.calc((uint8_t const *)oas, strlen(oas));
+    }
 
     if (crc32_results != eeCRC) {
       Serial.print(crc32_results);
@@ -530,7 +588,7 @@ boolean writeEEconfig() {
   uint64_t chipid = ESP.getEfuseMac();  // The chip ID is essentially its MAC address(length: 6 bytes).
   uint16_t chip = (uint16_t)(chipid >> 32);
 
-  // Generate fully key based on pre-key + hardware mac address
+  // Generate full key based on pre-key + hardware mac address
   snprintf(cipherKey, 17, CIPHER_PKEY "%04X%08X", chip, (uint32_t)chipid);
 
   // Set the key
@@ -549,6 +607,9 @@ boolean writeEEconfig() {
     crc32_results = crc32_results + crc32.calc((uint8_t const *)subMask, strlen(subMask));
     crc32_results = crc32_results + crc32.calc((uint8_t const *)gatewayIp, strlen(gatewayIp));
     crc32_results = crc32_results + crc32.calc((uint8_t const *)dnsIp, strlen(dnsIp));
+  }
+  if (optionsConfig) {    
+    crc32_results = crc32_results + crc32.calc((uint8_t const *)oas, strlen(oas));
   }
 
   // Convert crc restults to string to write to eeprom
@@ -590,7 +651,7 @@ boolean writeEEconfig() {
     Serial.println(F("Write atemIp failed.  Reset to try again."));
     return (false);
   }
-  // If static config has been enabled write the static ip data to eeprom
+  // If static config has been enabled write the static ip data to EEPROM
   if (staticConfig) {
     // Add tallyIp
     workingData = cipher->encryptString(String(tallyIp));
@@ -620,8 +681,17 @@ boolean writeEEconfig() {
       Serial.println(F("Write dnsIp failed.  Reset to try again."));
       return (false);
     }
-
-  }  // End staticConfig data
+  }
+  // If configuration options has been enabled, write the options data to EEPROM
+  if (optionsConfig) {
+    // Add oas which is currently the only option supported
+    workingData = cipher->encryptString(String(oas));
+    encryptedData = workingData.c_str();
+    if (!addToEEPROM(START_ADDRESS, encryptedData)) {
+      Serial.println(F("Write oas failed.  Reset to try again."));
+      return (false);
+    }
+  }  // End optionsConfig data
 
   // Add CRC Data
   workingData = cipher->encryptString(String(cfgCRC));
@@ -689,6 +759,7 @@ boolean readSDconfig(String configFile, int configLineLength) {
   // Define keyCount count;
   int keyCount = 0;     // Minimum keys required to work
   int staticCount = 0;  // Required number of static parameters to work
+  int optionsCount = 0;  // Required number of optional parameters
 
   // Open the configuration file.
   if (!cfg.begin(cfName, configLineLength)) {
@@ -750,6 +821,10 @@ boolean readSDconfig(String configFile, int configLineLength) {
       dnsIp = cfg.copyValue();
       staticCount++;
 
+    } else if (cfg.nameIs("oas")) {
+      oas = cfg.copyValue();
+      optionsCount++;
+
     } else {
       // Report unrecognized names.
       Serial.print("Unknown key name in config: ");
@@ -760,7 +835,9 @@ boolean readSDconfig(String configFile, int configLineLength) {
   // Clean up
   cfg.end();
 
-  if (staticCount == 4) staticConfig = true;  // Set client static config to true if all four parameters (tally ip, subnet mask, gateway and dns) are provided
+  if (staticCount == 4) staticConfig = true;    // Set tally client staticConfig to true if all four parameters (tally ip, subnet mask, gateway and dns) are provided
+
+  if (optionsCount == 1) optionsConfig = true;  // Set optionsConfig to true if all options have been provided (currently limited to oas)
 
   // Required key config values is five as of version .8
   if (keyCount < 5) return (false);
@@ -789,7 +866,7 @@ void buttonWasPressed(Event &e) {
     M5.Lcd.fillRect(tbtn.x, tbtn.y, tbtn.w, tbtn.h, tbtn.isPressed() ? WHITE : BLACK);
 
   } else {
-  if ( e.type == E_TOUCH) {           // If a touch event set ATEM appropriately and update the button if a macro
+  if ( e.type == E_TOUCH) {           // If a touch event, set ATEM appropriately and update the button if a macro
     if (buttonType == 'c') {
       AtemSwitcher.changeProgramInput(buttonNumber);
     } else {
@@ -981,7 +1058,7 @@ void setup() {
   M5.begin(true, true, false, true);
 
   M5.Lcd.fillScreen(BLACK);  // Clear the screen
-  M5.Lcd.setRotation(1);     // Set rotation on its side so reasonable sized message text will fit
+  M5.Lcd.setRotation(1);     // Set rotation on its side so reasonably sized message text will fit
   M5.Lcd.setTextSize(3);     // Set text size to mid level
 
   Serial.begin(115200);
@@ -1001,7 +1078,7 @@ void setup() {
     }
 
   } else {
-    // Choose the configuration file assuming one exists
+    // Choose the configuration file, assuming one exists
     String configFile;
 
     configFile = chooseConfigFile();
@@ -1012,7 +1089,7 @@ void setup() {
       HaltProgram();
     }
 
-    // Read our configuration from the SD card file.
+    // Read configuration data from the SD card configuration file.
     didReadConfig = readSDconfig(configFile, CONFIG_LINE_LENGTH);
 
     if (!didReadConfig) {
@@ -1094,13 +1171,22 @@ void setup() {
   // Call the button setup function
   setupButtons();
 
-  // Show the default state of ATEM as not connected via gray dot
-  M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_LIGHTGREY);
+  // Set oasEnabled if oas configuration option was set to "true"
+  // Done this way because writeEEconfig was originally written to only handle strings.
+  if(optionsConfig) {
+     if (!strcmp(oas,"true")) {
+      oasEnabled = true; 
+     }
+  }
 
-  #if OAS_SUPP == true
-    // Show the default state of "On Air" as not streaming via gray dot
-    M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);
-  #endif
+  // Show the default state of ATEM and OAS (if enabled) as "not connected" via a gray dot
+  if(oasEnabled) {
+   M5.Lcd.fillCircle(ACS_XLOC_OAS, ACS_YLOC, ACS_SIZE, TFT_LIGHTGREY);
+   M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);
+  } else {
+    M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_LIGHTGREY);
+  }  //End ACS and OAS default position
+
 
   // Show the iniital state of the battery
   updateBattery();
@@ -1166,26 +1252,34 @@ void loop() {
     atemLastConStatus = atemConStatus;
 
     if (atemConStatus) {
-      M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_GREEN);  // ATEM connected
+      if (oasEnabled) {
+        M5.Lcd.fillCircle(ACS_XLOC_OAS, ACS_YLOC, ACS_SIZE, TFT_GREEN);  // ATEM connected with room for OAS status indicator
+      } else  {
+        M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_GREEN);  // ATEM connected in default position
+      }
     } else {
-      M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_RED);  // ATEM not connected
+      if (oasEnabled) {
+        M5.Lcd.fillCircle(ACS_XLOC_OAS, ACS_YLOC, ACS_SIZE, TFT_RED);  // ATEM disconnected with room for OAS status indicator
+      } else  {
+        M5.Lcd.fillCircle(ACS_XLOC, ACS_YLOC, ACS_SIZE, TFT_RED);  // ATEM disconnected in default position
+      }
     }
   }  // End connection status
   
-#if OAS_SUPP == true
   // Update ATEM "On Air" status
-  if (atemConStatus) {
-    atemOAStatus = AtemSwitcher.getStreamStreaming();
-    if (atemOAStatus != atemLastOAStatus) {
-      atemLastOAStatus = atemOAStatus;
-      M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, atemOAStatus ? TFT_RED : TFT_LIGHTGREY);  // ATEM "On Air" Status
-    }
-  } else {
-    M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);    // If ATEM not connected then "On Air" is unknown at best
-    atemOAStatus = false;
-    atemLastOAStatus = false;
+  if (oasEnabled) {
+    if (atemConStatus) {  
+        atemOAStatus = AtemSwitcher.getStreamStreaming();
+        if (atemOAStatus != atemLastOAStatus) {
+            atemLastOAStatus = atemOAStatus;
+            M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, atemOAStatus ? TFT_RED : TFT_LIGHTGREY);  // ATEM "On Air" Status
+        }
+    } else {
+      M5.Lcd.fillCircle(OAS_XLOC, OAS_YLOC, OAS_SIZE, TFT_LIGHTGREY);    // If ATEM is not connected then "On Air" is unknown at best
+      atemOAStatus = false;
+      atemLastOAStatus = false;
     }  // End "On Air" status check
-#endif
+  }  // End Options Check
 
   // Update battery status if it has changed
   updateBattery();
